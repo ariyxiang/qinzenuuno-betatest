@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UNO Game</title>
+  <style>
+    :root {
+      --bg-start: cyan;
+      --bg-end: #000000;
+      --text: #ffffff;
+      --panel: #222222;
+      --panel-2: #333333;
+      --btn-bg: #333333;
+      --btn-bg-hover: #555555;
+      --card-back: linear-gradient(to top, red, violet);
+      --outline: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="light"] {
+      --bg-start: #f0f4ff;
+      --bg-end: #e6e6e6;
+      --text: #111111;
+      --panel: #ffffff;
+      --panel-2: #f5f5f5;
+      --btn-bg: #e0e0e0;
+      --btn-bg-hover: #d0d0d0;
+      --card-back: linear-gradient(to top, red, violet);
+      --outline: rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at center, var(--bg-start), var(--bg-end));
+      color: var(--text);
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* Top-level wrappers */
+    #game {
+      display: none;
+      /* hidden until Start */
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      position: relative;
+    }
+
+    #opponent-hand,
+    #player-hand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 20px;
+      perspective: 1000px;
+      gap: 12px;
+    }
+
+    .card-row {
+      display: flex;
+      justify-content: center;
+      position: relative;
+      height: 100px;
+      align-items: center;
+    }
+
+    .card-stack-wrapper {
+      position: relative;
+      width: 60px;
+      height: 90px;
+      margin: -10px;
+    }
+
+    .card-stack-count {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #ff4444;
+      color: white;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 10;
+      border: 2px solid var(--panel);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+
+    .card {
+      width: 60px;
+      height: 90px;
+      border-radius: 10px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transform-origin: bottom center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s, border 0.3s;
+      border: 1px solid var(--outline);
+      user-select: none;
+    }
+
+    .card:hover {
+      transform: translateY(-15px) scale(1.1);
+    }
+
+    .selected {
+      border: 3px solid gold;
+    }
+
+    #center-card {
+      margin: 20px;
+      padding: 20px;
+      background: var(--panel);
+      border-radius: 20px;
+      display: inline-block;
+      border: 1px solid var(--outline);
+    }
+
+    .multi-button {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 50;
+      background: var(--btn-bg);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+    }
+
+    .skip-button,
+    .menu-btn {
+      background: var(--btn-bg);
+      border: none;
+      color: var(--text);
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background .2s, transform .05s;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+    }
+
+    .skip-button:hover,
+    .multi-button:hover,
+    .menu-btn:hover {
+      background: var(--btn-bg-hover);
+    }
+
+    .menu-btn:active {
+      transform: translateY(1px)
+    }
+
+    #preview {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 20;
+      padding: 16px;
+    }
+
+    #preview .card {
+      width: 100px;
+      height: 150px;
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+
+    #preview button {
+      background: var(--btn-bg);
+      color: var(--text);
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #preview button:hover {
+      background: var(--btn-bg-hover);
+    }
+
+    #deck {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    #deck .card {
+      background: var(--card-back);
+      cursor: pointer;
+    }
+
+    /* MODAL STACK VIEW */
+    #stackModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 16px;
+    }
+
+    .stack-modal-content {
+      background: var(--panel);
+      border: 1px solid var(--outline);
+      border-radius: 16px;
+      padding: 20px;
+      max-height: 80vh;
+      overflow-y: auto;
+      width: min(400px, 90vw);
+    }
+
+    .stack-modal-content h3 {
+      margin: 0 0 16px;
+      color: var(--text);
+    }
+
+    .stack-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stack-cards-grid .card {
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .stack-modal-content button {
+      background: var(--btn-bg);
+      border: none;
+      color: var(--text);
+      padding: 10px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.2s;
+    }
+
+    .stack-modal-content button:hover {
+      background: var(--btn-bg-hover);
+    }
+
+    /* START SCREEN */
+    #start-screen {
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .start-panel {
+      width: min(520px, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--outline);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+    }
+
+    .title {
+      font-size: 36px;
+      margin: 4px 0 12px;
+      letter-spacing: .5px;
+    }
+
+    .subtitle {
+      opacity: .8;
+      margin-bottom: 24px
+    }
+
+    .menu-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap
+    }
+
+    /* SETTINGS PANEL */
+    #settings {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      background: rgba(0, 0, 0, .55);
+      padding: 16px;
+    }
+
+    .settings-card {
+      width: min(520px, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--outline);
+      border-radius: 18px;
+      padding: 18px 18px 8px;
+      text-align: left;
+    }
+
+    .settings-row {
+      margin: 12px 0 18px;
+      background: var(--panel-2);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--outline)
+    }
+
+    .settings-row h4 {
+      margin: 0 0 8px
+    }
+
+    .settings-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 8px 0 4px
+    }
+
+    .radio {
+      display: flex;
+      gap: 10px;
+      align-items: center
+    }
+
+    .radio input {
+      transform: translateY(1px)
+    }
+
+    .range {
+      width: 100%
+    }
+
+    /* TOAST */
+    #toast {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--panel);
+      color: var(--text);
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--outline);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s, transform .3s;
+      z-index: 100;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translate(-50%, 10px);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- START MENU -->
+  <section id="start-screen">
+    <div class="start-panel">
+      <div style="font-size:48px;">🃏</div>
+      <div class="title">UNO Game</div>
+      <div class="subtitle">Beta Test • @qinzenu</div>
+      <div class="menu-actions">
+        <button class="menu-btn" id="btnStart">Mulai</button>
+        <a href="https://saweria.co" class="menu-btn" style="text-decoration: none;">Donasi</a>
+        <button class="menu-btn" id="btnSettings">Pengaturan</button>
+      </div>
+    </div>
+  </section> <!-- GAME -->
+  <div id="game">
+    <!-- Tambahkan di dalam <div id="game">, sebelum #opponent-hand -->
+    <div id="turn-indicator" style="
+  position:absolute; 
+  top:10px; 
+  left:50%; 
+  transform:translateX(-50%);
+  background: var(--panel);
+  padding:6px 16px;
+  border-radius:12px;
+  border:1px solid var(--outline);
+  font-weight:600;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  z-index: -1;
+">
+      Giliran: Player
+    </div>
+    <div id="opponent-hand"></div>
+
+    <div id="deck" onclick="drawCard()">
+      <div class="card">UNO</div>
+    </div>
+    <div id="center-card"></div>
+    <div>
+      <button class="skip-button" onclick="skipTurn()">Lewati</button>
+      <button id="multiBtn" class="multi-button" style="display:none;" onclick="playMultiple()">Taro Sekaligus</button>
+      <button class="multi-button" onclick="openSettings()">⚙️</button>
+    </div>
+    <div id="player-hand"></div>
+  </div> <!-- PREVIEW DRAWN CARD -->
+  <div id="preview">
+    <div id="preview-card"></div>
+    <div>
+      <button onclick="placePreview()">Taro</button>
+      <button onclick="keepPreview()">Kembali</button>
+    </div>
+  </div>
+
+  <!-- STACK MODAL -->
+  <div id="stackModal">
+    <div class="stack-modal-content">
+      <h3 id="stackModalTitle">Kartu Tumpukan</h3>
+      <div class="stack-cards-grid" id="stackCardsGrid"></div>
+      <button onclick="closeStackModal()">Tutup</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <!-- SETTINGS MODAL -->
+  <div id="settings">
+    <div class="settings-card">
+      <h3 style="margin:0 0 8px">Pengaturan</h3>
+      <div class="settings-row">
+        <h4>Tema</h4>
+        <label class="radio"><input type="radio" name="theme" value="dark"> Gelap</label>
+        <label class="radio"><input type="radio" name="theme" value="light"> Terang</label>
+      </div>
+
+      <div class="settings-row">
+        <h4>Volume</h4>
+        <input id="rangeVolume" class="range" type="range" min="0" max="1" step="0.01" />
+        <div id="volLabel" style="opacity:.8;margin-top:6px">0%</div>
+      </div>
+
+      <div class="settings-actions" style="justify-content: space-between;">
+        <button class="menu-btn" onclick="closeSettings()">Kembali</button>
+        <button class="menu-btn" onclick="saveSettings()">Simpan</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <audio id="bgMusic" loop autoplay>
+    <source src="https://www.bensound.com/bensound-music/bensound-buddy.mp3" type="audio/mp3">
+  </audio>
+
+  <audio id="sfxClick" src="click.mp3" preload="auto"></audio>
+  <audio id="sfxSuccess" src="success.mp3" preload="auto"></audio>
+  <audio id="sfxWarn" src="warn.mp3" preload="auto"></audio>
+  <script>
+    // ====== CONFIG & STATE ======
+    const colors = ["red", "blue", "#0B6623", "#FFDA00"];
+    const values = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const drawValues = [2, 4, 8];
+
+    let deck = [];
+    let playerHand = [];
+    let opponentHand = [];
+    let centerCard = null;
+    let playerTurn = true;
+    let previewCard = null;
+    let selectedCards = [];
+    let drawStack = 0;
+
+    // MULTI-ROW STATE
+    let stackedPlayerCards = {}; // {rowIndex_cardIndex: [array of stacked cards]}
+    let stackedOpponentCards = {}; // {rowIndex_cardIndex: [array of stacked cards]}
+
+    // ====== PERSISTENCE (THEME + VOLUME) ======
+    const LS_THEME = 'uno_theme';
+    const LS_VOLUME = 'uno_volume';
+
+    // 🔥 background music    
+    const bgMusic = document.getElementById('bgMusic');
+
+    // ====== AUDIO ======
+    function playSound(type = 'click') {
+      let el;
+      if (type === 'click') el = document.getElementById('sfxClick');
+      else if (type === 'success') el = document.getElementById('sfxSuccess');
+      else if (type === 'warn') el = document.getElementById('sfxWarn');
+
+      if (el) {
+        el.volume = getVolume();
+        el.currentTime = 0;
+        el.play();
+      }
+    }
+
+    function startMusic() { bgMusic.volume = getVolume(); bgMusic.currentTime = 0; bgMusic.play(); }
+    function stopMusic() { bgMusic.pause(); bgMusic.currentTime = 0; }
+
+    // ====== MENANG / RESET ======
+    function checkWin() {
+      if (playerHand.length === 0) {
+        stopMusic();
+        showToast("Kamu Menang 🎉");
+        setTimeout(resetGame, 2000);
+      } else if (opponentHand.length === 0) {
+        stopMusic();
+        showToast("Bot Menang 😭");
+        setTimeout(resetGame, 2000);
+      }
+    }
+
+    function resetGame() {
+      playerHand = [];
+      opponentHand = [];
+      centerCard = null;
+      deck = [];
+      drawStack = 0;
+      selectedCards = [];
+      previewCard = null;
+      stackedPlayerCards = {};
+      stackedOpponentCards = {};
+
+      document.getElementById('game').style.display = 'none';
+      document.getElementById('start-screen').style.display = 'grid';
+
+      stopMusic();
+    }
+
+    // ====== THEME & VOLUME ======
+    function loadTheme() {
+      const saved = localStorage.getItem(LS_THEME) || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+      const radios = document.querySelectorAll('input[name="theme"]');
+      radios.forEach(r => r.checked = (r.value === saved));
+    }
+    function saveTheme(theme) {
+      localStorage.setItem(LS_THEME, theme);
+      document.documentElement.setAttribute('data-theme', theme);
+      showToast(`Tema diset ke ${theme === 'dark' ? 'Gelap' : 'Terang'}`);
+    }
+
+    function loadVolume() {
+      let v = parseFloat(localStorage.getItem(LS_VOLUME));
+      if (Number.isNaN(v)) v = 0.6;
+      setVolume(v, /*silent*/true);
+    }
+    function setVolume(v, silent = false) {
+      v = Math.min(1, Math.max(0, v));
+      localStorage.setItem(LS_VOLUME, String(v));
+      const range = document.getElementById('rangeVolume');
+      const label = document.getElementById('volLabel');
+      if (range) range.value = v;
+      if (label) label.textContent = Math.round(v * 100) + '%';
+
+      if (bgMusic) bgMusic.volume = v;
+
+      if (!silent) showToast('Volume: ' + Math.round(v * 100) + '%');
+    }
+    function getVolume() {
+      const v = parseFloat(localStorage.getItem(LS_VOLUME));
+      return Number.isNaN(v) ? 0.6 : v;
+    }
+
+    // ====== START / DONATE / SETTINGS ======
+    const startScreen = document.getElementById('start-screen');
+    const gameEl = document.getElementById('game');
+
+    document.getElementById('btnStart').addEventListener('click', () => {
+      startScreen.style.display = 'none';
+      gameEl.style.display = 'flex';
+      playSound('success');
+      startMusic();
+    });
+
+    document.getElementById('btnSettings').addEventListener('click', () => { openSettings(); });
+    function openSettings() { document.getElementById('settings').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('settings').style.display = 'none'; }
+
+    let tempTheme = null;
+    Array.from(document.querySelectorAll('input[name="theme"]')).forEach(r => {
+      r.addEventListener('change', (e) => {
+        tempTheme = e.target.value;
+        playSound('click');
+      });
+    });
+    function saveSettings() {
+      if (tempTheme) { saveTheme(tempTheme); tempTheme = null; }
+      showToast('Pengaturan disimpan');
+      closeSettings();
+    }
+
+    const rangeVolume = document.getElementById('rangeVolume');
+    rangeVolume.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      setVolume(v);
+      playSound('click');
+    });
+
+    // ====== TOAST ======
+    let toastTimer;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1400);
+    }
+
+    // ====== TURN INDICATOR ======
+    function updateTurnIndicator() {
+      const turnEl = document.getElementById("turn-indicator");
+      if (!turnEl) return;
+      turnEl.textContent = "Giliran: " + (playerTurn ? "Kamu" : "Bot");
+    }
+
+    // ====== GAME LOGIC ======
+    function createDeck() {
+      deck = [];
+      for (let c of colors) {
+        for (let v of values) { deck.push({ color: c, value: v, type: "normal" }); }
+        for (let d of drawValues) { deck.push({ color: c, value: "+" + d, type: "draw", amount: d }); }
+      }
+      deck.sort(() => Math.random() - 0.5);
+    }
+
+    function drawInitial() {
+      for (let i = 0; i < 7; i++) {
+        playerHand.push(deck.pop());
+        opponentHand.push(deck.pop());
+      }
+      centerCard = deck.pop();
+      render();
+      updateTurnIndicator();
+    }
+
+    // ====== MULTI-ROW RENDER ======
+    function renderWithRows(hand, isPlayer) {
+      const rows = [];
+      const cardsPerRow = 7;
+
+      for (let i = 0; i < hand.length; i += cardsPerRow) {
+        rows.push(hand.slice(i, i + cardsPerRow));
+      }
+
+      return rows;
+    }
+
+    function getStackKey(rowIdx, cardIdx) {
+      return `${rowIdx}_${cardIdx}`;
+    }
+
+    function render() {
+      const opponentDiv = document.getElementById("opponent-hand");
+      const playerDiv = document.getElementById("player-hand");
+      const centerDiv = document.getElementById("center-card");
+
+      opponentDiv.innerHTML = "";
+      
+      // Limit opponent visible cards to 7
+      const visibleOpponentCards = opponentHand.slice(0, 7);
+      const opponentRowDiv = document.createElement("div");
+      opponentRowDiv.className = "card-row";
+      
+      visibleOpponentCards.forEach((c, cardIdx) => {
+        const wrapperDiv = document.createElement("div");
+        wrapperDiv.className = "card-stack-wrapper";
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.background = "var(--card-back)";
+        
+        let offset = (cardIdx - (visibleOpponentCards.length - 1) / 2) * 5;
+        card.style.transform = `rotate(${offset}deg)`;
+        card.style.zIndex = cardIdx;
+        
+        wrapperDiv.appendChild(card);
+        opponentRowDiv.appendChild(wrapperDiv);
+      });
+      
+      if (opponentHand.length > 7) {
+        const countDiv = document.createElement("div");
+        countDiv.className = "card-stack-count";
+        countDiv.style.position = "relative";
+        countDiv.style.top = "0";
+        countDiv.style.right = "0";
+        countDiv.style.margin = "0 10px";
+        countDiv.textContent = "+" + (opponentHand.length - 7);
+        opponentRowDiv.appendChild(countDiv);
+      }
+      opponentDiv.appendChild(opponentRowDiv);
+
+      playerDiv.innerHTML = "";
+      
+      // Limit player visible cards to 14
+      const maxVisible = 14;
+      const visiblePlayerCards = playerHand.slice(0, maxVisible);
+      const playerRows = [];
+      for (let i = 0; i < visiblePlayerCards.length; i += 7) {
+        playerRows.push(visiblePlayerCards.slice(i, i + 7));
+      }
+
+      playerRows.forEach((row, rowIdx) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "card-row";
+
+        row.forEach((c, cardIdx) => {
+          const globalIdx = rowIdx * 7 + cardIdx;
+          const wrapperDiv = document.createElement("div");
+          wrapperDiv.className = "card-stack-wrapper";
+
+          const card = document.createElement("div");
+          card.className = "card";
+          card.style.background = c.color;
+          card.innerText = c.value;
+
+          if (selectedCards.includes(globalIdx)) card.classList.add("selected");
+
+          card.onclick = () => selectCard(globalIdx);
+
+          let offset = (cardIdx - (row.length - 1) / 2) * 5;
+          card.style.transform = `rotate(${offset}deg)`;
+          card.style.zIndex = cardIdx;
+
+          wrapperDiv.appendChild(card);
+          rowDiv.appendChild(wrapperDiv);
+        });
+        playerDiv.appendChild(rowDiv);
+      });
+
+      if (playerHand.length > maxVisible) {
+        const moreBtn = document.createElement("button");
+        moreBtn.className = "menu-btn";
+        moreBtn.textContent = "Lihat kartu lainnya";
+        moreBtn.style.marginTop = "10px";
+        moreBtn.onclick = () => openStackModal(playerHand, "Kartu Kamu");
+        playerDiv.appendChild(moreBtn);
+      }
+
+      centerDiv.innerHTML = "<div class='card' style='background:" + centerCard.color + "'>" + centerCard.value + "</div>";
+      document.getElementById("multiBtn").style.display = (selectedCards.length > 1) ? "inline-block" : "none";
+      
+      // Add a single "Play" button if one card is selected to make it clear
+      if (selectedCards.length === 1) {
+          document.getElementById("multiBtn").style.display = "inline-block";
+          document.getElementById("multiBtn").textContent = "Taro Kartu";
+      } else if (selectedCards.length > 1) {
+          document.getElementById("multiBtn").textContent = "Taro Sekaligus";
+      }
+    }
+
+    // ====== STACK MODAL ======
+    function openStackModal(cards, title = "Kartu") {
+      const modal = document.getElementById('stackModal');
+      const grid = document.getElementById('stackCardsGrid');
+      const titleEl = document.getElementById('stackModalTitle');
+      
+      titleEl.innerText = title;
+      grid.innerHTML = '';
+
+      cards.forEach((card, idx) => {
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'card';
+        cardDiv.style.background = card.color;
+        cardDiv.innerText = card.value;
+        
+        if (selectedCards.includes(idx)) cardDiv.classList.add("selected");
+        
+        cardDiv.onclick = () => {
+            selectCard(idx);
+            openStackModal(cards, title); // Refresh modal to show selection
+        };
+        grid.appendChild(cardDiv);
+      });
+
+      modal.style.display = 'flex';
+    }
+
+    function closeStackModal() {
+      document.getElementById('stackModal').style.display = 'none';
+      render();
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('stackModal').addEventListener('click', (e) => {
+      if (e.target.id === 'stackModal') {
+        closeStackModal();
+      }
+    });
+
+    function selectCard(index) {
+      if (!playerTurn) return;
+      const card = playerHand[index];
+      
+      if (selectedCards.length === 0) {
+          if (card.color === centerCard.color || card.value === centerCard.value) {
+              selectedCards.push(index);
+          } else {
+              showToast("Kartu tidak cocok!");
+              playSound('warn');
+          }
+      } else {
+          // If clicking the same card again and it's the only one, play it
+          if (selectedCards.length === 1 && selectedCards[0] === index) {
+              playSingleCard(index);
+              closeStackModal();
+              return;
+          }
+          
+          let firstCard = playerHand[selectedCards[0]];
+          if (card.value === firstCard.value) {
+              if (selectedCards.includes(index)) {
+                  selectedCards = selectedCards.filter(i => i !== index);
+              } else {
+                  selectedCards.push(index);
+              }
+          } else {
+              showToast("Pilih kartu dengan angka yang sama!");
+              playSound('warn');
+          }
+      }
+      render();
+    }
+
+    // ✅ VERSI FIXED: playSingleCard
+    function playSingleCard(i) {
+      let card = playerHand[i];
+      if (card.color === centerCard.color || card.value === centerCard.value) {
+        playerHand.splice(i, 1);
+        centerCard = card;
+
+        if (card.type === "draw") {
+          drawStack += card.amount;
+          handleDraw("bot");
+        } else if (card.type === "skip") {
+          playerTurn = false;
+          render(); updateTurnIndicator(); playSound('success'); checkWin();
+          setTimeout(botTurn, 600);
+          return;
+        } else {
+          if (drawStack > 0) handleDraw("bot");
+        }
+
+        selectedCards = [];
+        playerTurn = false;
+        render();
+        updateTurnIndicator();
+        playSound('success');
+        checkWin();
+        setTimeout(botTurn, 600);
+      }
+    }
+
+    // ✅ VERSI FIXED: playMultiple
+    function playMultiple() {
+      if (selectedCards.length === 0) return;
+      let first = playerHand[selectedCards[0]];
+      if (first.color === centerCard.color || first.value === centerCard.value) {
+        selectedCards.sort((a, b) => b - a).forEach(i => playerHand.splice(i, 1));
+        centerCard = first;
+
+        if (first.type === "draw") {
+          drawStack += first.amount;
+          handleDraw("bot");
+        } else if (first.type === "skip") {
+          playerTurn = false;
+          selectedCards = [];
+          render(); updateTurnIndicator(); playSound('success'); checkWin();
+          setTimeout(botTurn, 600);
+          return;
+        } else {
+          if (drawStack > 0) handleDraw("bot");
+        }
+
+        selectedCards = [];
+        playerTurn = false;
+        render();
+        updateTurnIndicator();
+        playSound('success');
+        checkWin();
+        setTimeout(botTurn, 600);
+      }
+    }
+
+    // ✅ VERSI FIXED: placePreview
+    function placePreview() {
+      if (previewCard.color === centerCard.color || previewCard.value === centerCard.value) {
+        centerCard = previewCard;
+
+        if (previewCard.type === "draw") {
+          drawStack += previewCard.amount;
+          handleDraw("bot");
+        } else if (previewCard.type === "skip") {
+          previewCard = null;
+          document.getElementById("preview").style.display = "none";
+          playerTurn = false;
+          render(); updateTurnIndicator(); playSound('success'); checkWin();
+          setTimeout(botTurn, 600);
+          return;
+        } else {
+          if (drawStack > 0) handleDraw("bot");
+        }
+
+        previewCard = null;
+        document.getElementById("preview").style.display = "none";
+        playerTurn = false;
+        render();
+        updateTurnIndicator();
+        playSound('success');
+        checkWin();
+        setTimeout(botTurn, 600);
+      } else {
+        showToast("Kartu tidak cocok!");
+        playSound('warn');
+      }
+    }
+
+    function drawCard() {
+      if (!playerTurn) return;
+      if (deck.length === 0) createDeck();
+      previewCard = deck.pop();
+      const prevDiv = document.getElementById("preview");
+      const cardDiv = document.getElementById("preview-card");
+      cardDiv.className = "card";
+      cardDiv.style.background = previewCard.color;
+      cardDiv.innerText = previewCard.value;
+      prevDiv.style.display = "flex";
+      playSound('click');
+    }
+
+    function keepPreview() {
+      if (previewCard) {
+        deck.push(previewCard);
+        deck.sort(() => Math.random() - 0.5);
+      }
+      previewCard = null;
+      document.getElementById("preview").style.display = "none";
+      render();
+    }
+
+    function skipTurn() {
+      if (!playerTurn) return;
+      if (drawStack > 0) handleDraw("player");
+      playerTurn = false;
+      selectedCards = [];
+      playSound('click');
+      render();
+      updateTurnIndicator();
+      setTimeout(botTurn, 600);
+    }
+
+    function botTurn() {
+      let playable = opponentHand.findIndex(c => (c.color === centerCard.color || c.value === centerCard.value));
+      if (playable >= 0) {
+        let card = opponentHand[playable];
+        centerCard = card;
+        opponentHand.splice(playable, 1);
+
+        if (card.type === "draw") {
+          drawStack += card.amount;
+          handleDraw("player");
+        } else if (card.type === "skip") {
+          // bot skip -> balik lagi ke player
+          render(); updateTurnIndicator(); checkWin();
+          playerTurn = true;
+          return;
+        } else {
+          if (drawStack > 0) handleDraw("player");
+        }
+      } else {
+        if (drawStack > 0) { handleDraw("bot"); }
+        else {
+          if (deck.length === 0) createDeck();
+          opponentHand.push(deck.pop());
+        }
+      }
+
+      playerTurn = true;
+      render();
+      updateTurnIndicator();
+      checkWin();
+    }
+
+    function handleDraw(target) {
+      if (deck.length < drawStack) createDeck();
+      let hand = target === "player" ? playerHand : opponentHand;
+      for (let i = 0; i < drawStack; i++) { hand.push(deck.pop()); }
+      showToast((target === "player" ? "Kamu" : "Bot") + " ambil " + drawStack + " kartu!");
+      playSound('warn');
+      drawStack = 0;
+    }
+
+    // ====== INIT ======
+    (function init() {
+      loadTheme();
+      loadVolume();
+      createDeck();
+      drawInitial();
+    })();    
+  </script>
+</body>
+
+</html>
